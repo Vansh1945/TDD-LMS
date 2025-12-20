@@ -13,7 +13,10 @@ const createChapter = async (req, res) => {
     }
 
     // Check if course exists and belongs to mentor
+    console.log("createChapter: mentorId from token:", mentorId);
+    console.log("createChapter: courseId from request body:", courseId);
     const course = await Course.findOne({ _id: courseId, mentorId });
+    console.log("createChapter: found course:", course);
     if (!course) {
       return res.status(404).json({ message: "Course not found or access denied" });
     }

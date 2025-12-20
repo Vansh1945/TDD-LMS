@@ -83,13 +83,15 @@ function App() {
           }
         />
         <Route
-          path="/mentor/course/:courseId/add-chapter"
+          path="/mentor/add-chapter"
           element={
             <ProtectedRoute requiredRole="mentor">
               <AddChapter />
             </ProtectedRoute>
           }
         />
+
+   
         <Route
           path="/mentor/course/:courseId/assign-students"
           element={

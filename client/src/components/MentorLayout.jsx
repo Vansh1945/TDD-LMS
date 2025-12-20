@@ -34,7 +34,7 @@ const MentorLayout = ({ children }) => {
       icon: <BookOpen size={20} />,
     },
     {
-      path: '/mentor/add-chapters',
+      path: '/mentor/add-chapter',
       name: 'Add Chapters',
       icon: <PlusSquare size={20} />,
     },
