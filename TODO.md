@@ -1,0 +1,4 @@
+- [ ] Fix chapter-controller.js: Change course.students.includes(userId) to course.students.some(s => s.toString() === userId)
+- [ ] Fix progress-controller.js: Change student.assignedCourses.includes(courseId) in markChapterCompleted
+- [ ] Fix progress-controller.js: Change student.assignedCourses.includes(courseId) in markChapterCompletedForStudent
+- [ ] Fix course-controller.js: Change student.assignedCourses.includes(courseId) in assignCourseToStudent
