@@ -14,10 +14,12 @@ router.post('/mark-completed-for-student', roleMiddleware(['mentor']), progressC
 // Student, Mentor, and Admin routes for viewing progress
 router.get('/:courseId', roleMiddleware(['student', 'mentor', 'admin']), progressController.getProgress);
 // Student-only routes
-router.post('/mark-completed', roleMiddleware(['student']), progressController.markChapterCompleted);
+router.post(
+    '/mark-completed',
+    authMiddleware,
+    roleMiddleware(['student']),
+    progressController.markChapterCompleted
+);
 
-// Combine routers
-// router.use('/', studentRouter);
-// router.use('/', mentorRouter);
 
 module.exports = router;

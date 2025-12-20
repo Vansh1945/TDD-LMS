@@ -101,7 +101,7 @@ const markChapterCompleted = async (req, res) => {
     // Check if student is enrolled in the course
     const course = await Course.findById(courseId);
     const student = await User.findById(studentId);
-    if (!student || !student.assignedCourses.some(c => c.toString() === courseId)) {
+    if (!student || !course.students.includes(studentId)) {
       return res.status(403).json({ message: "Access denied: Not enrolled in this course" });
     }
 

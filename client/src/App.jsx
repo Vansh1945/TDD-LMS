@@ -21,7 +21,6 @@ import Progress from './pages/mentor/Progress';
 
 
 import ProtectedRoute from './components/ProtectedRoute';
-import ProgressBar from './components/ProgressBar';
 
 function App() {
   return (
@@ -119,7 +118,7 @@ function App() {
           }
         />
         <Route
-          path="/student/courses/:courseId"
+          path="/student/course/:courseId"
           element={
             <ProtectedRoute requiredRole="student">
               <CourseViewer />
