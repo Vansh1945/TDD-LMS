@@ -2,6 +2,8 @@ const Progress = require("../models/Progress");
 const Chapter = require("../models/Chapter");
 const Course = require("../models/Course");
 const User = require("../models/User");
+const Certificate = require("../models/Certificate");
+const { generateCertificate } = require("../utils/generateCertificate");
 
 // Get progress for a student in a course
 const getProgress = async (req, res) => {
@@ -144,6 +146,26 @@ const markChapterCompleted = async (req, res) => {
     }
 
     await progress.save();
+
+    // Check if the course is completed
+    const totalChapters = allChapters.length;
+    const completedChapters = await Progress.countDocuments({ studentId, courseId, completed: true });
+
+    if (totalChapters > 0 && completedChapters === totalChapters) {
+      // Check if a certificate already exists
+      const existingCertificate = await Certificate.findOne({ studentId, courseId });
+      if (!existingCertificate) {
+        const certificateUrl = await generateCertificate(student.name, course.title, new Date().toLocaleDateString());
+        const certificate = new Certificate({
+          studentId,
+          courseId,
+          certificateUrl,
+          issuedAt: new Date(),
+        });
+        await certificate.save();
+      }
+    }
+    
     res.json({ message: "Chapter marked as completed", progress });
   } catch (error) {
     if (error.name === "ValidationError") {

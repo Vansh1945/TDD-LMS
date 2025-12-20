@@ -1,5 +1,7 @@
 const Course = require("../models/Course");
 const User = require("../models/User");
+const Chapter = require('../models/Chapter');
+const Progress = require('../models/Progress');
 
 // Create a new course
 const createCourse = async (req, res) => {
@@ -133,18 +135,37 @@ const assignCourseToStudent = async (req, res) => {
 
 // Get courses assigned to the authenticated student
 const getStudentCourses = async (req, res) => {
-  console.log('getStudentCourses: Entering controller');
   try {
     const studentId = req.user.userId;
-    const student = await User.findById(studentId).populate('assignedCourses');
+    const student = await User.findById(studentId).populate({
+      path: 'assignedCourses',
+      model: 'Course'
+    });
+
     if (!student) {
-      console.log('getStudentCourses: Student not found for userId:', studentId);
       return res.status(404).json({ message: "Student not found" });
     }
-    console.log('getStudentCourses: Found student and assigned courses');
-    res.json(student.assignedCourses);
+
+    const coursesWithProgress = await Promise.all(
+      student.assignedCourses.map(async (course) => {
+        const totalChapters = await Chapter.countDocuments({ courseId: course._id });
+        const completedChapters = await Progress.countDocuments({
+          studentId,
+          courseId: course._id,
+          completed: true
+        });
+
+        const progress = totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0;
+
+        return {
+          ...course.toObject(),
+          progress: Math.round(progress)
+        };
+      })
+    );
+
+    res.json(coursesWithProgress);
   } catch (error) {
-    console.error('getStudentCourses: Server error', error.message);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

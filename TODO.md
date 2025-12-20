@@ -3,7 +3,7 @@
 ## Tasks
 - [x] Enhance Courses.jsx with modern UI, StudentLayout, progress indicators, and course details
 - [x] Fix CourseViewer.jsx chapter fetching consistency and improve error handling
-- [ ] Verify Certificates.jsx enforces 100% completion for downloads
+- [x] Verify Certificates.jsx enforces 100% completion for downloads
 - [ ] Test all pages for functionality and responsive design
 - [ ] Verify API integrations and JWT authentication
 
@@ -12,3 +12,4 @@
 - [x] Get user approval for plan
 - [x] Enhanced Courses.jsx with comprehensive UI and functionality
 - [x] Fixed CourseViewer.jsx chapter fetching consistency
+- [x] Verified Certificates.jsx enforces 100% completion for downloads

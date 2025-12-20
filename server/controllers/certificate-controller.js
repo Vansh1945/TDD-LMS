@@ -10,16 +10,23 @@ const path = require('path');
 const checkEligibility = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const studentId = req.user.id;
+
+    // ✅ FIX HERE
+    const studentId = req.user.userId;
 
     // Get all chapters for the course
-    const chapters = await Chapter.find({ courseId, isActive: true }).sort({ order: 1 });
+    const chapters = await Chapter.find({
+      courseId,
+      isActive: true
+    }).sort({ order: 1 });
 
     if (chapters.length === 0) {
-      return res.status(404).json({ message: 'No chapters found for this course' });
+      return res.status(404).json({
+        message: 'No chapters found for this course'
+      });
     }
 
-    // Check if all chapters are completed
+    // Get completed chapters
     const completedChapters = await Progress.find({
       studentId,
       courseId,
@@ -40,11 +47,13 @@ const checkEligibility = async (req, res) => {
   }
 };
 
+
 // Generate certificate if eligible
 const generateCertificateController = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const studentId = req.user.id;
+    const studentId = req.user.userId; 
+
 
     // Check eligibility first
     const chapters = await Chapter.find({ courseId, isActive: true });
@@ -101,21 +110,22 @@ const generateCertificateController = async (req, res) => {
 const downloadCertificate = async (req, res) => {
   try {
     const { certificateId } = req.params;
-    const studentId = req.user.id;
+    const studentId = req.user.userId;
 
-    // Find certificate
     const certificate = await Certificate.findById(certificateId);
-    if (!certificate || certificate.studentId.toString() !== studentId) {
+    if (!certificate || !certificate.studentId.equals(studentId)) {
       return res.status(404).json({ message: 'Certificate not found' });
     }
 
-    // Check if file exists
-    if (!require('fs').existsSync(certificate.certificateUrl)) {
+    const fs = require('fs');
+    if (!fs.existsSync(certificate.certificateUrl)) {
       return res.status(404).json({ message: 'Certificate file not found' });
     }
 
-    // Send file
-    res.download(certificate.certificateUrl, `certificate_${certificateId}.pdf`);
+    res.download(
+      certificate.certificateUrl,
+      `certificate_${certificateId}.pdf`
+    );
 
   } catch (error) {
     console.error('Error downloading certificate:', error);
@@ -123,14 +133,19 @@ const downloadCertificate = async (req, res) => {
   }
 };
 
+
 // Get student's certificates
 const getCertificates = async (req, res) => {
   try {
-    const studentId = req.user.id;
+    const studentId = req.user.userId.toString(); // Convert to string for compatibility
+
+    console.log('Fetching certificates for studentId:', studentId);
 
     const certificates = await Certificate.find({ studentId })
       .populate('courseId', 'title')
       .sort({ issuedAt: -1 });
+
+    console.log('Found certificates:', certificates.length);
 
     res.json(certificates);
 
@@ -140,9 +155,36 @@ const getCertificates = async (req, res) => {
   }
 };
 
+
+const viewCertificate = async (req, res) => {
+  try {
+    const { certificateId } = req.params;
+    const studentId = req.user.userId;
+
+    const certificate = await Certificate.findById(certificateId);
+
+    if (!certificate || !certificate.studentId.equals(studentId)) {
+      return res.status(404).json({ message: 'Certificate not found' });
+    }
+
+    const absolutePath = path.resolve(certificate.certificateUrl);
+
+    if (!fs.existsSync(absolutePath)) {
+      return res.status(404).json({ message: 'Certificate file not found' });
+    }
+
+    res.sendFile(absolutePath);
+
+  } catch (error) {
+    console.error('Error viewing certificate:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   checkEligibility,
   generateCertificateController,
   downloadCertificate,
-  getCertificates
+  getCertificates,
+  viewCertificate
 };

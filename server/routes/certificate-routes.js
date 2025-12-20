@@ -4,7 +4,8 @@ const {
   checkEligibility,
   generateCertificateController,
   downloadCertificate,
-  getCertificates
+  getCertificates,
+  viewCertificate
 } = require('../controllers/certificate-controller');
 const authMiddleware = require('../middlewares/authMiddleware');
 const roleMiddleware = require('../middlewares/roleMiddleware');
@@ -18,6 +19,9 @@ router.get('/eligibility/:courseId', checkEligibility);
 
 // Generate certificate if eligible
 router.post('/generate/:courseId', generateCertificateController);
+
+// View certificate
+router.get('/view/:certificateId', viewCertificate);
 
 // Download certificate
 router.get('/download/:certificateId', downloadCertificate);
