@@ -101,7 +101,7 @@ const Certificates = () => {
       if (!certificate.certificateUrl) {
         await axios.post(
           `${API}/certificates/generate/${certificate.courseId}`,
-          {},
+          null,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         
@@ -158,7 +158,7 @@ const Certificates = () => {
   };
 
   const handleView = (certificateId) => {
-    window.open(`${API}/certificates/view/${certificateId}`, '_blank');
+    window.open(`${API}/certificates/view/${certificateId}?token=${token}`, '_blank');
   };
 
   const showToast = (message, type = 'success') => {
@@ -512,22 +512,6 @@ const Certificates = () => {
                         </div>
                       </div>
 
-                      {/* Certificate Footer */}
-                      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Globe className="w-4 h-4 text-gray-400" />
-                            <span className="text-xs text-gray-500">Share on LinkedIn</span>
-                          </div>
-                          <Link
-                            to={`/student/course/${certificate.courseId}`}
-                            className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1"
-                          >
-                            View Course
-                            <ExternalLink className="w-3 h-3" />
-                          </Link>
-                        </div>
-                      </div>
                     </div>
                   );
                 })}

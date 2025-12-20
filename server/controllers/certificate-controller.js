@@ -5,6 +5,7 @@ const Progress = require('../models/Progress');
 const User = require('../models/User');
 const { generateCertificate } = require('../utils/generateCertificate');
 const path = require('path');
+const fs = require('fs');
 
 // Check if student is eligible for certificate for a course
 const checkEligibility = async (req, res) => {
@@ -117,7 +118,6 @@ const downloadCertificate = async (req, res) => {
       return res.status(404).json({ message: 'Certificate not found' });
     }
 
-    const fs = require('fs');
     if (!fs.existsSync(certificate.certificateUrl)) {
       return res.status(404).json({ message: 'Certificate file not found' });
     }

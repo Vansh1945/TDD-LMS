@@ -1,15 +1,9 @@
-# Student Frontend Enhancement Plan
+# Certificate Enhancement Task
 
 ## Tasks
-- [x] Enhance Courses.jsx with modern UI, StudentLayout, progress indicators, and course details
-- [x] Fix CourseViewer.jsx chapter fetching consistency and improve error handling
-- [x] Verify Certificates.jsx enforces 100% completion for downloads
-- [ ] Test all pages for functionality and responsive design
-- [ ] Verify API integrations and JWT authentication
+- [x] Modify server/utils/generateCertificate.js to add decorative border, background, and visual enhancements
+- [ ] Test certificate generation to ensure the PDF looks beautiful with borders
 
 ## Progress
-- [x] Analyze existing code and create plan
-- [x] Get user approval for plan
-- [x] Enhanced Courses.jsx with comprehensive UI and functionality
-- [x] Fixed CourseViewer.jsx chapter fetching consistency
-- [x] Verified Certificates.jsx enforces 100% completion for downloads
+- Plan approved by user
+- Ready to implement changes

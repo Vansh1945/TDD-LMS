@@ -53,16 +53,15 @@ const register = async (req, res) => {
 
 // Login user
 const login = async (req, res) => {
- try {
+  try {
     const { email, password } = req.body;
 
-
-      if (!email || !password) {
+    if (!req.body || !email || !password) {
       return res.status(400).json({
         message: 'Email and password are required'
       });
     }
-    
+
     // Find user
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
