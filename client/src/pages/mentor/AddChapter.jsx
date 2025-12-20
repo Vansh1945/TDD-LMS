@@ -26,14 +26,16 @@ const AddChapter = () => {
   const navigate = useNavigate();
   const { token, API } = useAuth();
   
-  const [courses, setCourses] = useState([]);
-  const [selectedCourse, setSelectedCourse] = useState(null);
+  // States
+  const [activeTab, setActiveTab] = useState('view'); // 'view' or 'create' or 'edit'
+  const [allCourses, setAllCourses] = useState([]); // New state for all courses
+  const [selectedCourseId, setSelectedCourseId] = useState(''); // Use courseId from params as initial selection
+  const [course, setCourse] = useState(null);
   const [chapters, setChapters] = useState([]);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editId, setEditId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeView, setActiveView] = useState("courses"); // "courses" or "chapters"
+  const [loading, setLoading] = useState(true); // This will indicate if initial course list is loading
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const [formData, setFormData] = useState({
     title: "",
