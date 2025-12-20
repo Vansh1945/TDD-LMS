@@ -41,7 +41,8 @@ const register = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        ...(user.role === 'mentor' && { isApproved: user.isApproved })
       }
     });
   } catch (error) {
@@ -97,7 +98,8 @@ const login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        ...(user.role === 'mentor' && { isApproved: user.isApproved })
       }
     });
   } catch (error) {

@@ -34,12 +34,19 @@ const createCourse = async (req, res) => {
 const getMentorCourses = async (req, res) => {
   try {
     const mentorId = req.user.userId;
-    const courses = await Course.find({ mentorId });
+
+    const courses = await Course.find({ mentorId })
+      .populate("students");
+
     res.json(courses);
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
+    });
   }
 };
+
 
 // Update a course
 const updateCourse = async (req, res) => {
