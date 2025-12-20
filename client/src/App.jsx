@@ -101,7 +101,7 @@ function App() {
           }
         />
         <Route
-          path="/mentor/course/:courseId/progress"
+          path="/mentor/progress"
           element={
             <ProtectedRoute requiredRole="mentor">
               <Progress />

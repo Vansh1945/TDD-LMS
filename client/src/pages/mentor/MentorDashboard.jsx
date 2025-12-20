@@ -419,28 +419,28 @@ const MentorDashboard = () => {
                         
                         <div className="grid grid-cols-2 gap-3">
                           <button
-                            onClick={() => navigate(`/mentor/course/${course._id}/add-chapter`)}
+                            onClick={() => navigate(`/mentor/add-chapter`)}
                             className="flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors group/btn"
                           >
                             <PlusCircle className="w-4 h-4" />
                             <span className="text-sm font-medium">Add Chapter</span>
                           </button>
                           <button
-                            onClick={() => navigate(`/mentor/course/${course._id}/assign-students`)}
+                            onClick={() => navigate(`/mentor/assign-students`)}
                             className="flex items-center justify-center gap-2 px-3 py-2.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors group/btn"
                           >
                             <UserPlus className="w-4 h-4" />
                             <span className="text-sm font-medium">Assign</span>
                           </button>
                           <button
-                            onClick={() => navigate(`/mentor/course/${course._id}/progress`)}
+                            onClick={() => navigate(`/mentor/progress`)}
                             className="flex items-center justify-center gap-2 px-3 py-2.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors group/btn"
                           >
                             <BarChart3 className="w-4 h-4" />
                             <span className="text-sm font-medium">Progress</span>
                           </button>
                           <button
-                            onClick={() => navigate(`/mentor/course/${course._id}`)}
+                            onClick={() => navigate(`/mentor/create-course`)}
                             className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors group/btn"
                           >
                             <Settings className="w-4 h-4" />
