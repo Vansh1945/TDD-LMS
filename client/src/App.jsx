@@ -93,7 +93,7 @@ function App() {
 
    
         <Route
-          path="/mentor/course/:courseId/assign-students"
+          path="/mentor/assign-students"
           element={
             <ProtectedRoute requiredRole="mentor">
               <AssignStudent />
