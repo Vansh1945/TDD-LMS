@@ -45,6 +45,12 @@ const AddChapter = () => {
     order: "",
   });
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [activeView, setActiveView] = useState("courses"); // "courses" or "chapters"
+  const [searchTerm, setSearchTerm] = useState("");
+
   const axiosAuth = axios.create({
     baseURL: API,
     headers: {
@@ -61,7 +67,7 @@ const AddChapter = () => {
     try {
       setLoading(true);
       const res = await axiosAuth.get("/courses/mentor");
-      setCourses(res.data);
+      setAllCourses(res.data);
     } catch (err) {
       console.error("Failed to load courses");
     } finally {
@@ -178,7 +184,7 @@ const AddChapter = () => {
   };
 
   // Filter courses based on search term
-  const filteredCourses = courses.filter(course =>
+  const filteredCourses = allCourses.filter(course =>
     course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     course.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
