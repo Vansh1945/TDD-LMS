@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import MentorLayout from '../../components/MentorLayout';
 import { useAuth } from '../../auth/auth';
+import MentorLayout from '../../components/MentorLayout';
+import { toast } from 'react-toastify';
 import {
   BookOpen,
   Plus,
@@ -10,170 +10,191 @@ import {
   Trash2,
   Video,
   Image as ImageIcon,
-  ListOrdered,
-  Clock,
-  Users,
   ChevronRight,
-  Search,
-  Filter,
-  RefreshCw,
-  PlayCircle,
-  X,
-  Save
+  ArrowLeft,
+  Link,
+  Eye,
+  X
 } from 'lucide-react';
 
 const AddChapter = () => {
   const navigate = useNavigate();
   const { token, API } = useAuth();
   
-  // States
-  const [activeTab, setActiveTab] = useState('view'); // 'view' or 'create' or 'edit'
-  const [allCourses, setAllCourses] = useState([]); // New state for all courses
-  const [selectedCourseId, setSelectedCourseId] = useState(''); // Use courseId from params as initial selection
-  const [course, setCourse] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [selectedCourse, setSelectedCourse] = useState(null);
   const [chapters, setChapters] = useState([]);
-  const [loading, setLoading] = useState(true); // This will indicate if initial course list is loading
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
+  const [loading, setLoading] = useState(true);
+  const [imageModal, setImageModal] = useState({ open: false, url: "" });
+  
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     imageUrl: "",
     videoUrl: "",
-    order: "",
+    order: 1,
   });
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editId, setEditId] = useState(null);
-  const [selectedCourse, setSelectedCourse] = useState(null);
-  const [activeView, setActiveView] = useState("courses"); // "courses" or "chapters"
-  const [searchTerm, setSearchTerm] = useState("");
+  const [editingChapter, setEditingChapter] = useState(null);
 
-  const axiosAuth = axios.create({
-    baseURL: API,
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  /* ================= FETCH MENTOR COURSES ================= */
   useEffect(() => {
-    fetchMentorCourses();
+    getCourses();
   }, []);
 
-  const fetchMentorCourses = async () => {
+  const getCourses = async () => {
     try {
       setLoading(true);
-      const res = await axiosAuth.get("/courses/mentor");
-      setAllCourses(res.data);
-    } catch (err) {
-      console.error("Failed to load courses");
+      const response = await fetch(`${API}/courses/mentor`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Could not load courses');
+      }
+
+      const data = await response.json();
+      setCourses(data);
+
+    } catch (error) {
+      toast.error('Failed to load courses');
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  /* ================= FETCH CHAPTERS ================= */
-  const fetchChapters = async (courseId) => {
+  const getChapters = async (courseId) => {
     try {
-      const res = await axiosAuth.get(
-        `/chapters/get-chapters?courseId=${courseId}`
-      );
-      // Sort chapters by order
-      const sortedChapters = res.data.sort((a, b) => a.order - b.order);
+      const response = await fetch(`${API}/chapters/get-chapters?courseId=${courseId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Could not load chapters');
+      }
+
+      const data = await response.json();
+      const sortedChapters = data.sort((a, b) => a.order - b.order);
       setChapters(sortedChapters);
-    } catch (err) {
-      console.error("Failed to load chapters");
+
+    } catch (error) {
+      toast.error('Failed to load chapters');
+      console.error(error);
     }
   };
 
-  /* ================= COURSE SELECT ================= */
-  const handleCourseSelect = (course) => {
+  const selectCourse = (course) => {
     setSelectedCourse(course);
-    fetchChapters(course._id);
-    setActiveView("chapters");
+    getChapters(course._id);
     resetForm();
   };
 
   const goBackToCourses = () => {
     setSelectedCourse(null);
     setChapters([]);
+    setEditingChapter(null);
     resetForm();
-    setActiveView("courses");
   };
 
-  /* ================= FORM HANDLING ================= */
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleInputChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
-  /* ================= SEQUENTIAL ORDER ENFORCE ================= */
   const getNextOrder = () => {
     if (chapters.length === 0) return 1;
-    return Math.max(...chapters.map((c) => c.order)) + 1;
+    return Math.max(...chapters.map(chapter => chapter.order)) + 1;
   };
 
-  /* ================= CREATE / UPDATE CHAPTER ================= */
-  const handleSubmit = async (e) => {
+  const saveChapter = async (e) => {
     e.preventDefault();
-
-    // Validate sequential order for new chapters
-    if (!isEditing && Number(formData.order) !== getNextOrder()) {
-      alert(`Next allowed sequence is ${getNextOrder()}`);
+    
+    if (!formData.title || !formData.videoUrl) {
+      toast.error('Title and Video URL are required');
       return;
     }
 
     try {
-      if (isEditing) {
-        await axiosAuth.put(`/chapters/update-chapter/${editId}`, formData);
-        alert("Chapter updated successfully!");
-      } else {
-        await axiosAuth.post("/chapters/create-chapter", {
-          ...formData,
-          courseId: selectedCourse._id,
-        });
-        alert("Chapter added successfully!");
+      const url = editingChapter 
+        ? `${API}/chapters/update-chapter/${editingChapter._id}`
+        : `${API}/chapters/create-chapter`;
+
+      const method = editingChapter ? 'PUT' : 'POST';
+      const body = editingChapter 
+        ? formData
+        : { ...formData, courseId: selectedCourse._id, order: getNextOrder() };
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save chapter');
       }
 
-      fetchChapters(selectedCourse._id);
+      toast.success(editingChapter ? 'Chapter updated successfully' : 'Chapter added successfully');
+      
+      getChapters(selectedCourse._id);
       resetForm();
-    } catch (err) {
-      alert(err.response?.data?.message || "Operation failed");
+
+    } catch (error) {
+      toast.error('Failed to save chapter');
+      console.error(error);
     }
   };
 
-  /* ================= EDIT CHAPTER ================= */
-  const handleEdit = (chapter) => {
-    setIsEditing(true);
-    setEditId(chapter._id);
+  const editChapter = (chapter) => {
+    setEditingChapter(chapter);
     setFormData({
       title: chapter.title,
-      description: chapter.description,
-      imageUrl: chapter.imageUrl,
+      description: chapter.description || "",
+      imageUrl: chapter.imageUrl || "",
       videoUrl: chapter.videoUrl,
       order: chapter.order,
     });
   };
 
-  /* ================= DELETE CHAPTER ================= */
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this chapter?")) return;
+  const deleteChapter = async (chapterId) => {
+    if (!confirm('Delete this chapter?')) return;
+
     try {
-      await axiosAuth.delete(`/chapters/delete-chapter/${id}`);
-      fetchChapters(selectedCourse._id);
-      if (isEditing && editId === id) {
+      const response = await fetch(`${API}/chapters/delete-chapter/${chapterId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete chapter');
+      }
+
+      toast.success('Chapter deleted successfully');
+      getChapters(selectedCourse._id);
+      
+      if (editingChapter && editingChapter._id === chapterId) {
         resetForm();
       }
-    } catch (err) {
-      alert("Failed to delete chapter");
+
+    } catch (error) {
+      toast.error('Failed to delete chapter');
+      console.error(error);
     }
   };
 
   const resetForm = () => {
-    setIsEditing(false);
-    setEditId(null);
+    setEditingChapter(null);
     setFormData({
       title: "",
       description: "",
@@ -183,18 +204,28 @@ const AddChapter = () => {
     });
   };
 
-  // Filter courses based on search term
-  const filteredCourses = allCourses.filter(course =>
-    course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    course.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const openLink = (url) => {
+    window.open(url, '_blank');
+  };
+
+  const openImage = (url) => {
+    setImageModal({ open: true, url });
+  };
+
+  const closeImageModal = () => {
+    setImageModal({ open: false, url: "" });
+  };
 
   if (loading) {
     return (
       <MentorLayout>
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-8 flex flex-col items-center justify-center">
-          <RefreshCw className="w-8 h-8 text-primary animate-spin mb-4" />
-          <p className="text-gray-600">Loading courses...</p>
+        <div className="p-4 md:p-6">
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4 text-text">Loading courses...</p>
+            </div>
+          </div>
         </div>
       </MentorLayout>
     );
@@ -202,249 +233,162 @@ const AddChapter = () => {
 
   return (
     <MentorLayout>
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="p-4 md:p-6">
+        <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-text">
-                  {selectedCourse ? selectedCourse.title : "Manage Chapters"}
-                </h1>
-                <p className="text-gray-600 mt-2">
+                <h1 className="text-2xl md:text-3xl font-bold text-text">Manage Chapters</h1>
+                <p className="text-gray-600 mt-1">
                   {selectedCourse 
-                    ? `Manage chapters for "${selectedCourse.title}"` 
-                    : "Select a course to add or manage chapters"}
+                    ? `Chapters for: ${selectedCourse.title}` 
+                    : 'Select a course to manage chapters'}
                 </p>
               </div>
               
               {selectedCourse && (
                 <button
                   onClick={goBackToCourses}
-                  className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-text hover:bg-gray-100 rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-text rounded-lg hover:bg-gray-50"
                 >
-                  <X className="w-4 h-4" />
+                  <ArrowLeft size={18} />
                   Back to Courses
                 </button>
               )}
             </div>
           </div>
 
-          {/* Main Content */}
-          {activeView === "courses" ? (
-            /* COURSES VIEW */
+          {/* Course Selection View */}
+          {!selectedCourse ? (
             <div className="space-y-6">
-              {/* Search and Filter */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Search courses..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all"
-                      />
-                      <Search className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Filter className="w-4 h-4" />
-                    <span>{filteredCourses.length} courses</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Courses Grid */}
-              {filteredCourses.length === 0 ? (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-                  <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No courses found</h3>
-                  <p className="text-gray-500 mb-6">
-                    {searchTerm ? "Try adjusting your search" : "You haven't created any courses yet"}
-                  </p>
-                  <button
-                    onClick={() => navigate('/mentor/create-course')}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-secondary transition-colors"
-                  >
-                    <Plus className="w-5 h-5" />
-                    Create New Course
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredCourses.map((course) => (
-                    <div
-                      key={course._id}
-                      onClick={() => handleCourseSelect(course)}
-                      className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all cursor-pointer group"
+              <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <h2 className="text-xl font-bold text-text mb-4">Your Courses</h2>
+                <p className="text-gray-600 mb-6">Select a course to add or manage chapters</p>
+                
+                {courses.length === 0 ? (
+                  <div className="text-center py-8">
+                    <BookOpen className="mx-auto text-gray-300" size={48} />
+                    <p className="text-text font-medium mt-4">No courses found</p>
+                    <p className="text-gray-600 mb-6">Create your first course to add chapters</p>
+                    <button
+                      onClick={() => navigate('/mentor/create-course')}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90"
                     >
-                      <div className="p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <BookOpen className="w-6 h-6 text-primary" />
+                      <Plus size={18} />
+                      Create Course
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {courses.map((course) => (
+                      <div
+                        key={course._id}
+                        onClick={() => selectCourse(course)}
+                        className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+                            <BookOpen className="text-primary" size={20} />
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-                              {course.duration} hours
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <h3 className="text-lg font-semibold text-text mb-2 group-hover:text-primary transition-colors">
-                          {course.title}
-                        </h3>
-                        
-                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                          {course.description}
-                        </p>
-                        
-                        <div className="space-y-2 mb-6">
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <Clock className="w-4 h-4" />
-                            <span>{course.duration} hours duration</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <Users className="w-4 h-4" />
-                            <span>{course.students?.length || 0} students enrolled</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <ListOrdered className="w-4 h-4" />
-                            <span>Click to manage chapters</span>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-text line-clamp-1">{course.title}</h3>
+                            <p className="text-sm text-gray-500">{course.category || 'General'}</p>
                           </div>
                         </div>
-                        
-                        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                          <span className="text-primary font-medium">Manage Chapters</span>
-                          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors" />
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">{course.students?.length || 0} students</span>
+                          <button className="flex items-center gap-1 text-primary">
+                            <span>Select</span>
+                            <ChevronRight size={16} />
+                          </button>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
-            /* CHAPTERS VIEW (When course is selected) */
-            <div className="space-y-6">
-              {/* Course Info Card */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <BookOpen className="w-7 h-7 text-primary" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-semibold text-text">{selectedCourse.title}</h2>
-                      <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-600">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          {selectedCourse.duration} hours
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          {selectedCourse.students?.length || 0} students
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <ListOrdered className="w-4 h-4" />
-                          {chapters.length} chapters
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-text hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Refresh
-                  </button>
-                </div>
-              </div>
-
+            /* Chapter Management View */
+            <>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Chapters List */}
                 <div className="lg:col-span-2">
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                    <div className="p-6 border-b border-gray-100">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h2 className="text-xl font-semibold text-text">Course Chapters</h2>
-                          <p className="text-gray-600 text-sm">All chapters in sequential order</p>
-                        </div>
-                        <span className="px-3 py-1 bg-blue-100 text-primary text-sm font-medium rounded-full">
-                          {chapters.length} chapters
-                        </span>
+                  <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xl font-bold text-text">Chapters</h2>
+                      <div className="text-sm text-gray-600">
+                        {chapters.length} chapter{chapters.length !== 1 ? 's' : ''}
                       </div>
                     </div>
 
                     {chapters.length === 0 ? (
-                      <div className="p-12 text-center">
-                        <ListOrdered className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-700 mb-2">No chapters yet</h3>
-                        <p className="text-gray-500 mb-6">
-                          Start by adding your first chapter
-                        </p>
+                      <div className="text-center py-8">
+                        <BookOpen className="mx-auto text-gray-300" size={32} />
+                        <p className="text-text font-medium mt-4">No chapters yet</p>
+                        <p className="text-gray-600">Add your first chapter below</p>
                       </div>
                     ) : (
-                      <div className="divide-y divide-gray-100">
+                      <div className="space-y-3">
                         {chapters.map((chapter) => (
-                          <div
-                            key={chapter._id}
-                            className="p-6 hover:bg-gray-50 transition-colors"
-                          >
-                            <div className="flex items-start gap-4">
-                              {/* Order Badge */}
-                              <div className="flex-shrink-0">
-                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                  <span className="font-bold text-primary">{chapter.order}</span>
+                          <div key={chapter._id} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="px-2 py-0.5 bg-blue-50 text-primary text-sm rounded">
+                                    {chapter.order}
+                                  </span>
+                                  <h3 className="font-medium text-text">{chapter.title}</h3>
+                                </div>
+                                {chapter.description && (
+                                  <p className="text-gray-600 text-sm line-clamp-2">{chapter.description}</p>
+                                )}
+                                
+                                {/* Links Section */}
+                                <div className="mt-3 space-y-2">
+                                  {chapter.videoUrl && (
+                                    <div className="flex items-center gap-2">
+                                      <Video className="text-primary" size={14} />
+                                      <button
+                                        onClick={() => openLink(chapter.videoUrl)}
+                                        className="text-sm text-primary hover:text-secondary flex items-center gap-1"
+                                      >
+                                        <Link size={12} />
+                                        <span className="truncate max-w-[200px]">Watch Video</span>
+                                        <Eye size={12} />
+                                      </button>
+                                    </div>
+                                  )}
+                                  
+                                  {chapter.imageUrl && (
+                                    <div className="flex items-center gap-2">
+                                      <ImageIcon className="text-primary" size={14} />
+                                      <button
+                                        onClick={() => openImage(chapter.imageUrl)}
+                                        className="text-sm text-primary hover:text-secondary flex items-center gap-1"
+                                      >
+                                        <Link size={12} />
+                                        <span className="truncate max-w-[200px]">View Image</span>
+                                        <Eye size={12} />
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-
-                              {/* Chapter Details */}
-                              <div className="flex-1">
-                                <div className="flex items-start justify-between mb-2">
-                                  <div>
-                                    <h3 className="text-lg font-semibold text-text">
-                                      {chapter.title}
-                                    </h3>
-                                    <p className="text-gray-600 text-sm mt-1 line-clamp-2">
-                                      {chapter.description}
-                                    </p>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <button
-                                      onClick={() => handleEdit(chapter)}
-                                      className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-primary rounded-lg hover:bg-blue-100 transition-colors text-sm"
-                                    >
-                                      <Edit2 className="w-3 h-3" />
-                                      Edit
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(chapter._id)}
-                                      className="flex items-center gap-1 px-3 py-1 bg-red-50 text-danger rounded-lg hover:bg-red-100 transition-colors text-sm"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                      Delete
-                                    </button>
-                                  </div>
-                                </div>
-                                
-                                <div className="flex flex-wrap gap-2 mt-3">
-                                  {chapter.imageUrl && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                      <ImageIcon className="w-3 h-3" />
-                                      Has Image
-                                    </span>
-                                  )}
-                                  {chapter.videoUrl && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                      <PlayCircle className="w-3 h-3" />
-                                      Has Video
-                                    </span>
-                                  )}
-                                </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => editChapter(chapter)}
+                                  className="p-1.5 text-primary hover:bg-blue-50 rounded"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                                <button
+                                  onClick={() => deleteChapter(chapter._id)}
+                                  className="p-1.5 text-danger hover:bg-red-50 rounded"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -454,146 +398,101 @@ const AddChapter = () => {
                   </div>
                 </div>
 
-                {/* Add/Edit Chapter Form */}
-                <div className="space-y-6">
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-                    <div className="p-6 border-b border-gray-100">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                          {isEditing ? (
-                            <Edit2 className="w-5 h-5 text-primary" />
-                          ) : (
-                            <Plus className="w-5 h-5 text-primary" />
-                          )}
-                        </div>
-                        <div>
-                          <h2 className="text-xl font-semibold text-text">
-                            {isEditing ? "Edit Chapter" : "Add New Chapter"}
-                          </h2>
-                          <p className="text-gray-600 text-sm">
-                            {isEditing ? "Update chapter details" : "Add a new chapter to this course"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="p-6">
+                {/* Add/Edit Form */}
+                <div>
+                  <div className="bg-white rounded-xl border border-gray-200 p-5">
+                    <h2 className="text-xl font-bold text-text mb-4">
+                      {editingChapter ? 'Edit Chapter' : 'Add Chapter'}
+                    </h2>
+                    
+                    <form onSubmit={saveChapter}>
                       <div className="space-y-4">
-                        {/* Chapter Title */}
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Chapter Title *
-                          </label>
+                        <div>
+                          <label className="block text-sm font-medium text-text mb-2">Title</label>
                           <input
+                            type="text"
                             name="title"
-                            placeholder="Enter chapter title"
                             value={formData.title}
-                            onChange={handleChange}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                            placeholder="Chapter title"
                             required
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                           />
                         </div>
 
-                        {/* Description */}
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Description *
-                          </label>
+                        <div>
+                          <label className="block text-sm font-medium text-text mb-2">Description</label>
                           <textarea
                             name="description"
-                            placeholder="Enter chapter description"
                             value={formData.description}
-                            onChange={handleChange}
-                            required
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                            placeholder="Chapter description"
                             rows="3"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                           />
                         </div>
 
-                        {/* Image URL */}
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Image URL (Optional)
-                          </label>
+                        <div>
+                          <label className="block text-sm font-medium text-text mb-2">Video URL</label>
                           <div className="relative">
+                            <Video className="absolute left-3 top-3 text-gray-400" size={18} />
                             <input
-                              name="imageUrl"
-                              placeholder="https://example.com/image.jpg"
-                              value={formData.imageUrl}
-                              onChange={handleChange}
-                              className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all"
-                            />
-                            <ImageIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                          </div>
-                        </div>
-
-                        {/* Video URL */}
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Video URL *
-                          </label>
-                          <div className="relative">
-                            <input
+                              type="url"
                               name="videoUrl"
-                              placeholder="https://example.com/video.mp4"
                               value={formData.videoUrl}
-                              onChange={handleChange}
+                              onChange={handleInputChange}
+                              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="https://example.com/video"
                               required
-                              className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                             />
-                            <Video className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                           </div>
                         </div>
 
-                        {/* Sequence Order */}
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Sequence Order *
-                          </label>
+                        <div>
+                          <label className="block text-sm font-medium text-text mb-2">Image URL (Optional)</label>
                           <div className="relative">
+                            <ImageIcon className="absolute left-3 top-3 text-gray-400" size={18} />
                             <input
-                              type="number"
-                              name="order"
-                              placeholder={`Next order: ${getNextOrder()}`}
-                              value={formData.order || getNextOrder()}
-                              onChange={handleChange}
-                              required
-                              min="1"
-                              className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                              type="url"
+                              name="imageUrl"
+                              value={formData.imageUrl}
+                              onChange={handleInputChange}
+                              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                              placeholder="https://example.com/image.jpg"
                             />
-                            <ListOrdered className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                           </div>
-                          {!isEditing && (
-                            <p className="text-sm text-gray-500">
-                              Next sequential order: {getNextOrder()}
-                            </p>
-                          )}
                         </div>
 
-                        {/* Submit Buttons */}
-                        <div className="pt-4 space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-text mb-2">Order</label>
+                          <input
+                            type="number"
+                            name="order"
+                            value={formData.order}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                            placeholder="Sequence number"
+                            min="1"
+                            required
+                          />
+                          <p className="text-sm text-gray-500 mt-1">
+                            Next available: {getNextOrder()}
+                          </p>
+                        </div>
+
+                        <div className="space-y-3 pt-4">
                           <button
                             type="submit"
-                            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-secondary transition-colors"
+                            className="w-full px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90"
                           >
-                            {isEditing ? (
-                              <>
-                                <Save className="w-5 h-5" />
-                                Update Chapter
-                              </>
-                            ) : (
-                              <>
-                                <Plus className="w-5 h-5" />
-                                Add Chapter
-                              </>
-                            )}
+                            {editingChapter ? 'Update Chapter' : 'Add Chapter'}
                           </button>
                           
-                          {isEditing && (
+                          {editingChapter && (
                             <button
                               type="button"
                               onClick={resetForm}
-                              className="w-full px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                              className="w-full px-4 py-2.5 border border-gray-300 text-text rounded-lg hover:bg-gray-50"
                             >
                               Cancel Edit
                             </button>
@@ -603,31 +502,50 @@ const AddChapter = () => {
                     </form>
                   </div>
 
-                  {/* Quick Info */}
-                  <div className="bg-blue-50 rounded-xl border border-blue-200 p-6">
-                    <h3 className="font-semibold text-text mb-4">Quick Info</h3>
-                    <ul className="space-y-3 text-sm text-gray-600">
-                      <li className="flex items-center gap-2">
-                        <ListOrdered className="w-4 h-4 text-primary" />
-                        <span>Chapters must be added in sequential order</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Video className="w-4 h-4 text-primary" />
-                        <span>Video URL is required for each chapter</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <ImageIcon className="w-4 h-4 text-primary" />
-                        <span>Image URL is optional but recommended</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <PlayCircle className="w-4 h-4 text-primary" />
-                        <span>Current course has {chapters.length} chapters</span>
-                      </li>
-                    </ul>
+                  {/* Course Info */}
+                  <div className="mt-6 bg-blue-50 rounded-xl border border-blue-200 p-5">
+                    <h3 className="font-medium text-text mb-3">Course Info</h3>
+                    <div className="space-y-2 text-sm text-gray-600">
+                      <p><span className="font-medium">Title:</span> {selectedCourse.title}</p>
+                      <p><span className="font-medium">Category:</span> {selectedCourse.category || 'General'}</p>
+                      <p><span className="font-medium">Students:</span> {selectedCourse.students?.length || 0}</p>
+                      <p><span className="font-medium">Chapters:</span> {chapters.length}</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+
+              {/* Image Modal */}
+              {imageModal.open && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                    <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                      <h3 className="font-medium text-text">Image Preview</h3>
+                      <button
+                        onClick={closeImageModal}
+                        className="p-1 text-gray-500 hover:text-text"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                    <div className="p-4 flex items-center justify-center bg-gray-100 min-h-[400px]">
+                      <img
+                        src={imageModal.url}
+                        alt="Chapter image"
+                        className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "https://via.placeholder.com/400x300?text=Image+not+found";
+                        }}
+                      />
+                    </div>
+                    <div className="p-4 border-t border-gray-200 text-center">
+                      <p className="text-sm text-gray-600 break-all">{imageModal.url}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -52,7 +52,7 @@ router.post(
 /* ================= STUDENT COURSE DETAIL (KEEP LAST) ================= */
 router.get(
   "/:id",
-  roleMiddleware(["student"]),
+  roleMiddleware(["student", "mentor"]),
   courseController.getCourseById
 );
 

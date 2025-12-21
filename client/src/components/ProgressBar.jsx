@@ -1,19 +1,52 @@
 import React from 'react';
 
-const ProgressBar = ({ progress }) => {
+const ProgressBar = ({ progress, showLabel = false, size = 'md' }) => {
   const getProgressColor = () => {
-    if (progress === 100) return 'from-green-400 to-green-600';
-    if (progress >= 70) return 'from-blue-400 to-blue-600';
-    if (progress >= 40) return 'from-yellow-400 to-yellow-600';
-    return 'from-gray-400 to-gray-600';
+    if (progress === 100) return 'from-success to-success/80';
+    if (progress >= 70) return 'from-primary to-secondary';
+    if (progress >= 40) return 'from-warning to-warning/80';
+    return 'from-text/30 to-text/40';
+  };
+
+  const getHeight = () => {
+    switch (size) {
+      case 'sm': return 'h-1.5';
+      case 'lg': return 'h-3';
+      default: return 'h-2';
+    }
+  };
+
+  const getLabelSize = () => {
+    switch (size) {
+      case 'sm': return 'text-xs';
+      case 'lg': return 'text-sm';
+      default: return 'text-xs';
+    }
   };
 
   return (
-    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-      <div
-        className={`bg-gradient-to-r ${getProgressColor()} h-2.5 rounded-full transition-all duration-500 ease-in-out`}
-        style={{ width: `${progress}%` }}
-      ></div>
+    <div className="w-full">
+      {showLabel && (
+        <div className="flex justify-between items-center mb-1">
+          <span className={`font-medium ${getLabelSize()} text-text`}>
+            Progress
+          </span>
+          <span className={`font-semibold ${getLabelSize()} text-text`}>
+            {progress}%
+          </span>
+        </div>
+      )}
+      
+      <div className="w-full bg-background rounded-full overflow-hidden">
+        <div
+          className={`bg-gradient-to-r ${getProgressColor()} ${getHeight()} rounded-full transition-all duration-300 ease-out`}
+          style={{ width: `${progress}%` }}
+        >
+          {progress > 0 && progress < 100 && (
+            <div className="h-full w-full bg-gradient-to-r from-white/20 to-transparent"></div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
