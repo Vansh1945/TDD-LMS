@@ -153,7 +153,7 @@ const StudentLayout = ({ children }) => {
       {/* Main Content */}
       <main className={`
         transition-all duration-300 min-h-screen
-        lg:ml-${sidebarCollapsed ? '20' : '64'}
+        ${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}
       `}>
         {/* Top Bar */}
         <header className="sticky top-0 z-30 bg-white shadow-sm border-b border-gray-200">
