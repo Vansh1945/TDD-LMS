@@ -82,68 +82,8 @@ const getChapters = async (req, res) => {
   }
 };
 
-// Update a chapter
-const updateChapter = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, description, imageUrl, videoUrl, order } = req.body;
-    const mentorId = req.user.userId;
-
-    // Find chapter and check ownership via course
-    const chapter = await Chapter.findById(id).populate("courseId");
-    if (!chapter || chapter.courseId.mentorId.toString() !== mentorId.toString()) {
-      return res.status(404).json({ message: "Chapter not found or access denied" });
-    }
-
-    // If order is being updated, check uniqueness
-    if (order !== undefined && order !== chapter.order) {
-      const existingChapter = await Chapter.findOne({ courseId: chapter.courseId._id, order, _id: { $ne: id } });
-      if (existingChapter) {
-        return res.status(400).json({ message: "Chapter order must be unique for this course" });
-      }
-    }
-
-    if (title !== undefined) chapter.title = title;
-    if (description !== undefined) chapter.description = description;
-    if (imageUrl !== undefined) chapter.imageUrl = imageUrl;
-    if (videoUrl !== undefined) chapter.videoUrl = videoUrl;
-    if (order !== undefined) chapter.order = order;
-
-    await chapter.save();
-    res.json({ message: "Chapter updated successfully", chapter });
-  } catch (error) {
-    if (error.name === "ValidationError") {
-      return res.status(400).json({ message: error.message });
-    }
-    if (error.code === 11000) {
-      return res.status(400).json({ message: "Chapter order must be unique for this course" });
-    }
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-// Delete a chapter
-const deleteChapter = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const mentorId = req.user._id;
-
-    // Find chapter and check ownership
-    const chapter = await Chapter.findById(id).populate("courseId");
-    if (!chapter || chapter.courseId.mentorId.toString() !== mentorId.toString()) {
-      return res.status(404).json({ message: "Chapter not found or access denied" });
-    }
-
-    await Chapter.findByIdAndDelete(id);
-    res.json({ message: "Chapter deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
 
 module.exports = {
   createChapter,
-  getChapters,
-  updateChapter,
-  deleteChapter,
+  getChapters
 };

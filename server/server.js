@@ -23,7 +23,7 @@ app.use('/api/chapters', require('./routes/chapter-routes'));
 app.use('/api/courses', require('./routes/course-routes'));
 app.use('/api/progress', require('./routes/progress-routes'));
 app.use('/api/certificates', require('./routes/certificate-routes'));
-app.use('/api/student', require('./routes/student-routes'));
+
 
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Unstop LMS API' });

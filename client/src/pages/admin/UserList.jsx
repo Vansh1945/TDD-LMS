@@ -1,48 +1,63 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../auth/auth';
 import AdminLayout from '../../components/AdminLayout';
+import { toast } from 'react-toastify';
+import {
+  Search,
+  Filter,
+  RefreshCw,
+  User,
+  Users,
+  UserCheck,
+  MoreVertical,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react';
 
 const UserList = () => {
   const { token, API } = useAuth();
-  const [users, setUsers] = useState([]);
+  const [userList, setUserList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('name');
+  const [search, setSearch] = useState('');
+  const [role, setRole] = useState('all');
+  const [sortField, setSortField] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [page, setPage] = useState(1);
+  const perPage = 10;
 
   useEffect(() => {
-    fetchUsers();
+    getUsers();
   }, []);
 
-  const fetchUsers = async () => {
+  const getUsers = async () => {
     try {
+      setLoading(true);
       const response = await fetch(`${API}/users/all`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
+
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        throw new Error('Could not load users');
       }
+
       const data = await response.json();
-      setUsers(data);
-    } catch (err) {
-      setError(err.message);
+      setUserList(data);
+
+    } catch (error) {
+      toast.error('Failed to load users');
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) {
+  const removeUser = async (userId, userName) => {
+    if (!confirm(`Delete user ${userName}? This cannot be undone.`)) {
       return;
     }
-    
+
     try {
       const response = await fetch(`${API}/users/${userId}`, {
         method: 'DELETE',
@@ -50,144 +65,68 @@ const UserList = () => {
           Authorization: `Bearer ${token}`,
         },
       });
+
       if (!response.ok) {
-        throw new Error('Failed to delete user');
+        throw new Error('Delete failed');
       }
-      setUsers(users.filter(user => user._id !== userId));
-    } catch (err) {
-      setError(err.message);
+
+      setUserList(userList.filter(user => user._id !== userId));
+      toast.success('User deleted successfully');
+
+    } catch (error) {
+      toast.error('Could not delete user');
+      console.error(error);
     }
   };
 
-  const toggleUserStatus = async (userId, currentStatus) => {
-    try {
-      const response = await fetch(`${API}/users/${userId}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ isActive: !currentStatus }),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update user status');
-      }
-      const updatedUser = await response.json();
-      setUsers(users.map(user => 
-        user._id === userId ? { ...user, isActive: updatedUser.isActive } : user
-      ));
-    } catch (err) {
-      setError(err.message);
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
     }
   };
 
-  const approveUser = async (userId) => {
-    try {
-      const response = await fetch(`${API}/users/${userId}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ isApproved: true }),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to approve user');
-      }
-      const updatedUser = await response.json();
-      setUsers(users.map(user => 
-        user._id === userId ? { ...user, isApproved: updatedUser.isApproved } : user
-      ));
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  // Filter and sort users
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'approved' && user.isApproved) ||
-                         (statusFilter === 'pending' && !user.isApproved);
-    return matchesSearch && matchesRole && matchesStatus;
+  // Filter users
+  const filteredUsers = userList.filter(user => {
+    const matchSearch = user.name.toLowerCase().includes(search.toLowerCase()) ||
+                       user.email.toLowerCase().includes(search.toLowerCase());
+    const matchRole = role === 'all' || user.role === role;
+    return matchSearch && matchRole;
   });
 
+  // Sort users
   const sortedUsers = [...filteredUsers].sort((a, b) => {
-    let aValue, bValue;
+    const aVal = a[sortField] || '';
+    const bVal = b[sortField] || '';
     
-    switch (sortBy) {
-      case 'name':
-        aValue = a.name.toLowerCase();
-        bValue = b.name.toLowerCase();
-        break;
-      case 'email':
-        aValue = a.email.toLowerCase();
-        bValue = b.email.toLowerCase();
-        break;
-      case 'role':
-        aValue = a.role.toLowerCase();
-        bValue = b.role.toLowerCase();
-        break;
-      default:
-        aValue = a[sortBy];
-        bValue = b[sortBy];
-    }
-
     if (sortOrder === 'asc') {
-      return aValue > bValue ? 1 : -1;
+      return aVal.toString().localeCompare(bVal.toString());
     } else {
-      return aValue < bValue ? 1 : -1;
+      return bVal.toString().localeCompare(aVal.toString());
     }
   });
 
   // Pagination
-  const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedUsers = sortedUsers.slice(startIndex, startIndex + itemsPerPage);
+  const totalPages = Math.ceil(sortedUsers.length / perPage);
+  const startIndex = (page - 1) * perPage;
+  const usersToShow = sortedUsers.slice(startIndex, startIndex + perPage);
 
-  const handleSort = (column) => {
-    if (sortBy === column) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(column);
-      setSortOrder('asc');
-    }
+  const roleStats = {
+    student: userList.filter(u => u.role === 'student').length,
+    mentor: userList.filter(u => u.role === 'mentor').length,
+    admin: userList.filter(u => u.role === 'admin').length
   };
 
   if (loading) {
     return (
       <AdminLayout>
-        <div className="p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-            </div>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <AdminLayout>
-        <div className="p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="bg-danger/10 border border-danger/20 rounded-xl p-6">
-              <div className="flex items-center">
-                <svg className="h-6 w-6 text-danger mr-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                <h3 className="text-lg font-medium text-danger">Error: {error}</h3>
-              </div>
-              <button
-                onClick={fetchUsers}
-                className="mt-4 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition duration-150"
-              >
-                Try Again
-              </button>
+        <div className="p-4 md:p-6">
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4 text-text">Loading users...</p>
             </div>
           </div>
         </div>
@@ -197,317 +136,243 @@ const UserList = () => {
 
   return (
     <AdminLayout>
-      <div className="p-4 sm:p-6 lg:p-8">
+      <div className="p-4 md:p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-text">User Management</h1>
-                <p className="text-gray-600 mt-2">Manage all user accounts and permissions</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="px-3 py-1.5 bg-primary/10 text-primary rounded-lg font-medium">
-                  Total Users: {users.length}
-                </span>
+                <h1 className="text-2xl md:text-3xl font-bold text-text">User Management</h1>
+                <p className="text-gray-600 mt-1">Manage all user accounts</p>
               </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-              <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-600 text-sm">Students</p>
-                    <p className="text-2xl font-bold text-text mt-1">
-                      {users.filter(u => u.role === 'student').length}
-                    </p>
+                    <p className="text-2xl font-bold text-text">{roleStats.student}</p>
                   </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M10 20a10 10 0 1 1 0-20 10 10 0 0 1 0 20zM7 6v2a3 3 0 1 0 6 0V6a3 3 0 1 0-6 0zm-3.65 8.44a8 8 0 0 0 13.3 0 15.94 15.94 0 0 0-13.3 0z" />
-                    </svg>
+                  <div className="p-3 rounded-lg bg-blue-50">
+                    <User className="text-primary" size={24} />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+              <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-600 text-sm">Mentors</p>
-                    <p className="text-2xl font-bold text-text mt-1">
-                      {users.filter(u => u.role === 'mentor').length}
-                    </p>
+                    <p className="text-2xl font-bold text-text">{roleStats.mentor}</p>
                   </div>
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clipRule="evenodd" />
-                    </svg>
+                  <div className="p-3 rounded-lg bg-purple-50">
+                    <UserCheck className="text-secondary" size={24} />
                   </div>
                 </div>
               </div>
 
-
-
-              <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+              <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-600 text-sm">Pending Approval</p>
-                    <p className="text-2xl font-bold text-text mt-1">
-                      {users.filter(u => !u.isApproved).length}
-                    </p>
+                    <p className="text-gray-600 text-sm">Admins</p>
+                    <p className="text-2xl font-bold text-text">{roleStats.admin}</p>
                   </div>
-                  <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                    <svg className="w-6 h-6 text-warning" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                    </svg>
+                  <div className="p-3 rounded-lg bg-green-50">
+                    <Users className="text-success" size={24} />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Filters and Search */}
-            <div className="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-200">
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            {/* Filters */}
+            <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Search Users</label>
+                  <label className="block text-sm font-medium text-text mb-2">Search</label>
                   <div className="relative">
-                    <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+                    <Search className="absolute left-3 top-3.5 text-gray-400" size={18} />
                     <input
                       type="text"
-                      placeholder="Search by name or email..."
-                      className="pl-10 w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition duration-150"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Name or email..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Role</label>
-                  <select
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition duration-150"
-                    value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value)}
-                  >
-                    <option value="all">All Roles</option>
-                    <option value="student">Student</option>
-                    <option value="mentor">Mentor</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
-                  <select
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition duration-150"
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                  >
-                    <option value="all">All Status</option>
-                    <option value="approved">Approved</option>
-                    <option value="pending">Pending Approval</option>
-                  </select>
+                  <label className="block text-sm font-medium text-text mb-2">Role</label>
+                  <div className="relative">
+                    <Filter className="absolute left-3 top-3.5 text-gray-400" size={18} />
+                    <select
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 appearance-none"
+                    >
+                      <option value="all">All Roles</option>
+                      <option value="student">Student</option>
+                      <option value="mentor">Mentor</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-3.5 text-gray-400" size={18} />
+                  </div>
                 </div>
 
                 <div className="flex items-end">
                   <button
                     onClick={() => {
-                      setSearchTerm('');
-                      setRoleFilter('all');
-                      setStatusFilter('all');
+                      setSearch('');
+                      setRole('all');
+                      setPage(1);
                     }}
-                    className="w-full px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition duration-150"
+                    className="w-full px-4 py-2.5 border border-gray-300 text-text rounded-lg hover:bg-gray-50"
                   >
                     Clear Filters
                   </button>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Users Table */}
-            <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th
-                        className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition duration-150"
+          {/* Table */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="text-left p-4">
+                      <button
                         onClick={() => handleSort('name')}
+                        className="flex items-center space-x-1 font-medium text-sm text-gray-700 hover:text-text"
                       >
-                        <div className="flex items-center">
-                          Name
-                          {sortBy === 'name' && (
-                            <svg className={`ml-1 w-4 h-4 ${sortOrder === 'asc' ? 'transform rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </div>
-                      </th>
-                      <th
-                        className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition duration-150"
+                        <span>Name</span>
+                        {sortField === 'name' && (
+                          sortOrder === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-left p-4">
+                      <button
                         onClick={() => handleSort('email')}
+                        className="flex items-center space-x-1 font-medium text-sm text-gray-700 hover:text-text"
                       >
-                        <div className="flex items-center">
-                          Email
-                          {sortBy === 'email' && (
-                            <svg className={`ml-1 w-4 h-4 ${sortOrder === 'asc' ? 'transform rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </div>
-                      </th>
-                      <th
-                        className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition duration-150"
+                        <span>Email</span>
+                        {sortField === 'email' && (
+                          sortOrder === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-left p-4">
+                      <button
                         onClick={() => handleSort('role')}
+                        className="flex items-center space-x-1 font-medium text-sm text-gray-700 hover:text-text"
                       >
-                        <div className="flex items-center">
-                          Role
-                          {sortBy === 'role' && (
-                            <svg className={`ml-1 w-4 h-4 ${sortOrder === 'asc' ? 'transform rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          )}
+                        <span>Role</span>
+                        {sortField === 'role' && (
+                          sortOrder === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-left p-4 font-medium text-sm text-gray-700">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usersToShow.map((user) => (
+                    <tr key={user._id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="p-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <span className="font-semibold text-primary">
+                              {user.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-text">{user.name}</p>
+                            <p className="text-xs text-gray-500">ID: {user._id.substring(0, 8)}</p>
+                          </div>
                         </div>
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedUsers.map((user) => (
-                      <tr key={user._id} className="hover:bg-gray-50 transition duration-150">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                              <span className="text-primary font-semibold">
-                                {user.name.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-text">{user.name}</div>
-                              <div className="text-sm text-gray-500">ID: {user._id.substring(0, 8)}...</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{user.email}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            user.role === 'admin' 
-                              ? 'bg-purple-100 text-purple-800'
-                              : user.role === 'mentor'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="space-y-2">
-                            {user.role === 'mentor' ? (
-                              <div className="flex items-center">
-                                <div className={`w-3 h-3 rounded-full mr-2 ${user.isApproved ? 'bg-success' : 'bg-warning'}`}></div>
-                                <span className="text-sm text-gray-900">
-                                  {user.isApproved ? 'Approved' : 'Pending Approval'}
-                                </span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center">
-                                <div className={'w-3 h-3 rounded-full mr-2 bg-success'}></div>
-                                <span className="text-sm text-gray-900">
-                                  Active
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => deleteUser(user._id)}
-                              className="px-3 py-1.5 bg-danger text-white rounded-lg hover:bg-danger/90 transition duration-150 text-sm"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* No results */}
-              {paginatedUsers.length === 0 && (
-                <div className="text-center py-12">
-                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <h3 className="mt-4 text-lg font-medium text-gray-900">No users found</h3>
-                  <p className="mt-2 text-gray-500">Try adjusting your search or filters</p>
-                </div>
-              )}
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-700">
-                      Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-                      <span className="font-medium">
-                        {Math.min(startIndex + itemsPerPage, sortedUsers.length)}
-                      </span>{' '}
-                      of <span className="font-medium">{sortedUsers.length}</span> results
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                        className={`px-3 py-1.5 rounded-lg transition duration-150 ${
-                          currentPage === 1
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                        }`}
-                      >
-                        Previous
-                      </button>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      </td>
+                      <td className="p-4">
+                        <p className="text-text">{user.email}</p>
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          user.role === 'admin' 
+                            ? 'bg-purple-100 text-purple-700'
+                            : user.role === 'mentor'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-green-100 text-green-700'
+                        }`}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="p-4">
                         <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          className={`px-3 py-1.5 rounded-lg transition duration-150 ${
-                            currentPage === page
-                              ? 'bg-primary text-white'
-                              : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                          }`}
+                          onClick={() => removeUser(user._id, user.name)}
+                          className="px-3 py-1.5 bg-danger text-white rounded-lg hover:bg-danger/90 text-sm"
                         >
-                          {page}
+                          Delete
                         </button>
-                      ))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Empty State */}
+            {usersToShow.length === 0 && (
+              <div className="text-center py-12">
+                <User className="mx-auto text-gray-400" size={48} />
+                <p className="mt-4 text-text font-medium">No users found</p>
+                <p className="text-gray-600">Try different search terms</p>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="border-t border-gray-200 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-600">
+                    Showing {startIndex + 1}-{Math.min(startIndex + perPage, sortedUsers.length)} of {sortedUsers.length}
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setPage(page - 1)}
+                      disabled={page === 1}
+                      className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    {[1, 2, 3].map(num => (
                       <button
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                        className={`px-3 py-1.5 rounded-lg transition duration-150 ${
-                          currentPage === totalPages
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                        key={num}
+                        onClick={() => setPage(num)}
+                        className={`px-3 py-1.5 rounded-lg ${
+                          page === num
+                            ? 'bg-primary text-white'
+                            : 'border border-gray-300'
                         }`}
                       >
-                        Next
+                        {num}
                       </button>
-                    </div>
+                    ))}
+                    <button
+                      onClick={() => setPage(page + 1)}
+                      disabled={page === totalPages}
+                      className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

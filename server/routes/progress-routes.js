@@ -9,7 +9,6 @@ router.use(authMiddleware);
 
 // Mentor routes
 router.get('/mentor', roleMiddleware(['mentor']), progressController.getMentorProgress);
-router.post('/mark-completed-for-student', roleMiddleware(['mentor']), progressController.markChapterCompletedForStudent);
 
 // Student, Mentor, and Admin routes for viewing progress
 router.get('/:courseId', roleMiddleware(['student', 'mentor', 'admin']), progressController.getProgress);

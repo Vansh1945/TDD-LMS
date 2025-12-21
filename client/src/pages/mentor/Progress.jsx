@@ -586,9 +586,7 @@ const Progress = () => {
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                           Status
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                          Actions
-                        </th>
+                        
                       </tr>
                     </thead>
                     
@@ -662,25 +660,6 @@ const Progress = () => {
                                 {item.progress.completionPercentage === 100 && <CheckCircle className="w-3 h-3" />}
                                 {getStatusText(item.progress.completionPercentage)}
                               </span>
-                            </td>
-                            
-                            <td className="px-6 py-4">
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => viewChapterDetails(item.student._id, item.course._id)}
-                                  className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-primary rounded-lg hover:bg-blue-100 transition-colors text-sm"
-                                >
-                                  <Eye className="w-3 h-3" />
-                                  Details
-                                </button>
-                                <button
-                                  onClick={() => navigate(`/mentor/assign-students`)}
-                                  className="flex items-center gap-1 px-3 py-1 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm"
-                                >
-                                  <UserCheck className="w-3 h-3" />
-                                  Manage
-                                </button>
-                              </div>
                             </td>
                           </tr>
                         ))

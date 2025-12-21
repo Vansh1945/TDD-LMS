@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/auth';
 import AdminLayout from '../../components/AdminLayout';
+import { toast } from 'react-toastify';
 import {
   Users,
   UserCheck,
@@ -9,70 +10,123 @@ import {
   UserPlus,
   BookOpen,
   Award,
-  TrendingUp
+  Clock,
+  ArrowUp,
+  RefreshCw
 } from 'lucide-react';
 
 const AdminDashboard = () => {
   const { token, API } = useAuth();
-  const [analytics, setAnalytics] = useState(null);
+  const [stats, setStats] = useState({
+    students: 0,
+    mentors: 0,
+    courses: 0,
+    certificates: 0,
+    newUsers: 0,
+    pendingMentors: 0,
+    publishedCourses: 0
+  });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchAnalytics();
+    getDashboardData();
   }, []);
 
-  const fetchAnalytics = async () => {
+  const getDashboardData = async () => {
     try {
+      setLoading(true);
       const response = await fetch(`${API}/users/analytics`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
+
       if (!response.ok) {
-        throw new Error('Failed to fetch analytics');
+        throw new Error('Failed to load data');
       }
+
       const data = await response.json();
-      setAnalytics(data);
-    } catch (err) {
-      setError(err.message);
+      setStats({
+        students: data?.users?.students || 0,
+        mentors: data?.users?.mentors || 0,
+        courses: data?.courses?.total || 0,
+        certificates: data?.certificates?.total || 0,
+        newUsers: data?.users?.newUsers || 0,
+        pendingMentors: data?.users?.pendingMentors || 0,
+        publishedCourses: data?.courses?.published || 0
+      });
+
+    } catch (error) {
+      toast.error('Could not load dashboard data');
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
+  const statCards = [
+    {
+      title: 'Total Students',
+      value: stats.students,
+      icon: <Users size={24} />,
+      color: 'primary',
+      link: '/admin/users'
+    },
+    {
+      title: 'Total Mentors',
+      value: stats.mentors,
+      icon: <UserCheck size={24} />,
+      color: 'secondary',
+      link: '/admin/mentors'
+    },
+    {
+      title: 'Total Courses',
+      value: stats.courses,
+      icon: <BookOpen size={24} />,
+      color: 'success',
+      link: '/admin/courses'
+    },
+    {
+      title: 'Certificates',
+      value: stats.certificates,
+      icon: <Award size={24} />,
+      color: 'warning',
+      link: '/admin/certificates'
+    }
+  ];
+
+  const quickLinks = [
+    {
+      title: 'Manage Users',
+      description: 'View and manage all users',
+      icon: <Users size={20} />,
+      link: '/admin/users',
+      color: 'bg-blue-50 text-primary'
+    },
+    {
+      title: 'Mentor Approvals',
+      description: 'Approve or reject mentors',
+      icon: <UserCheck size={20} />,
+      link: '/admin/mentors',
+      color: 'bg-green-50 text-success'
+    },
+    {
+      title: 'View Analytics',
+      description: 'Detailed system analytics',
+      icon: <BarChart3 size={20} />,
+      link: '/admin/analytics',
+      color: 'bg-purple-50 text-secondary'
+    }
+  ];
+
   if (loading) {
     return (
       <AdminLayout>
-        <div className="p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-            </div>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <AdminLayout>
-        <div className="p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="bg-danger/10 border border-danger/20 rounded-xl p-6">
-              <div className="flex items-center">
-                <svg className="h-6 w-6 text-danger mr-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                <h3 className="text-lg font-medium text-danger">Error: {error}</h3>
-              </div>
-              <button
-                onClick={fetchAnalytics}
-                className="mt-4 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition duration-150"
-              >
-                Try Again
-              </button>
+        <div className="p-4 md:p-6">
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4 text-text">Loading dashboard...</p>
             </div>
           </div>
         </div>
@@ -82,143 +136,118 @@ const AdminDashboard = () => {
 
   return (
     <AdminLayout>
-      <div className="p-4 sm:p-6 lg:p-8">
+      <div className="p-4 md:p-6">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
+          {/* Page Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-text">Admin Dashboard</h1>
-            <p className="text-gray-600 mt-2">Welcome to your admin control center</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-text">Admin Dashboard</h1>
+                <p className="text-gray-600 mt-1">Welcome to your control panel</p>
+              </div>
+              <button
+                onClick={getDashboardData}
+                className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                <RefreshCw size={18} />
+                <span>Refresh</span>
+              </button>
+            </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {statCards.map((card, index) => (
+              <div key={index} className="bg-white rounded-xl border border-gray-200 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`p-3 rounded-lg bg-${card.color}/10`}>
+                    <div className={`text-${card.color}`}>
+                      {card.icon}
+                    </div>
+                  </div>
+                  <Link to={card.link} className="text-sm text-primary hover:underline">
+                    View
+                  </Link>
+                </div>
+                <h3 className="text-gray-600 text-sm mb-1">{card.title}</h3>
+                <p className="text-2xl font-bold text-text">{card.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Quick Actions */}
           <div className="mb-8">
             <h2 className="text-xl font-bold text-text mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Link
-                to="/admin/users"
-                className="bg-white rounded-xl shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-200 group"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                    <Users className="w-6 h-6 text-blue-600" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {quickLinks.map((link, index) => (
+                <Link
+                  key={index}
+                  to={link.link}
+                  className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start space-x-4">
+                    <div className={`p-3 rounded-lg ${link.color.split(' ')[0]}`}>
+                      <div className={link.color.split(' ')[1]}>
+                        {link.icon}
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-text mb-1">{link.title}</h3>
+                      <p className="text-sm text-gray-600">{link.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-text">Manage Users</h3>
-                    <p className="text-sm text-gray-600">View and manage all users</p>
-                  </div>
-                </div>
-              </Link>
-
-              <Link
-                to="/admin/mentors"
-                className="bg-white rounded-xl shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-200 group"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
-                    <UserCheck className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-text">Mentor Approvals</h3>
-                    <p className="text-sm text-gray-600">Approve or reject mentors</p>
-                  </div>
-                </div>
-              </Link>
-
-              <Link
-                to="/admin/analytics"
-                className="bg-white rounded-xl shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-200 group"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
-                    <BarChart3 className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-text">View Analytics</h3>
-                    <p className="text-sm text-gray-600">Detailed system analytics</p>
-                  </div>
-                </div>
-              </Link>
-            </div>
-          </div>
-
-          {/* Stats Overview */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {/* Total Students */}
-            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm">Total Students</p>
-                  <p className="text-3xl font-bold text-text mt-1">{analytics?.users?.students || 0}</p>
-                  <p className="text-sm text-green-600 mt-1">Active learners</p>
-                </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <UserPlus className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
-            </div>
-
-            {/* Total Mentors */}
-            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm">Total Mentors</p>
-                  <p className="text-3xl font-bold text-text mt-1">{analytics?.users?.mentors || 0}</p>
-                  <p className="text-sm text-purple-600 mt-1">{analytics?.users?.approvedMentors || 0} approved</p>
-                </div>
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <UserCheck className="w-6 h-6 text-purple-600" />
-                </div>
-              </div>
-            </div>
-
-            {/* Total Courses */}
-            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm">Total Courses</p>
-                  <p className="text-3xl font-bold text-text mt-1">{analytics?.courses?.total || 0}</p>
-                  <p className="text-sm text-orange-600 mt-1">{analytics?.courses?.published || 0} published</p>
-                </div>
-                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <BookOpen className="w-6 h-6 text-orange-600" />
-                </div>
-              </div>
-            </div>
-
-            {/* Total Certificates */}
-            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm">Certificates</p>
-                  <p className="text-3xl font-bold text-text mt-1">{analytics?.certificates?.total || 0}</p>
-                  <p className="text-sm text-green-600 mt-1">Issued</p>
-                </div>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Award className="w-6 h-6 text-green-600" />
-                </div>
-              </div>
+                </Link>
+              ))}
             </div>
           </div>
 
           {/* Recent Activity */}
-          <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-text">Recent Activity</h3>
-              <TrendingUp className="w-6 h-6 text-gray-400" />
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-text">Recent Activity</h2>
+              <Clock size={20} className="text-gray-400" />
             </div>
-            <p className="text-gray-600 mb-6">Activity from the last 7 days</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{analytics?.users?.newUsers || 0}</div>
-                <div className="text-gray-600">New Users</div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center p-4">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <UserPlus size={20} className="text-blue-500" />
+                  <span className="text-sm text-gray-600">New Users (7 days)</span>
+                </div>
+                <div className="flex items-center justify-center">
+                  <p className="text-2xl font-bold text-text">{stats.newUsers}</p>
+                  {stats.newUsers > 0 && (
+                    <ArrowUp size={16} className="text-success ml-2" />
+                  )}
+                </div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{analytics?.courses?.newCourses || 0}</div>
-                <div className="text-gray-600">New Courses</div>
+
+              <div className="text-center p-4">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <UserCheck size={20} className="text-purple-500" />
+                  <span className="text-sm text-gray-600">Pending Mentors</span>
+                </div>
+                <p className="text-2xl font-bold text-text">{stats.pendingMentors}</p>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">{analytics?.certificates?.newCertificates || 0}</div>
-                <div className="text-gray-600">New Certificates</div>
+
+              <div className="text-center p-4">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <BookOpen size={20} className="text-orange-500" />
+                  <span className="text-sm text-gray-600">Published Courses</span>
+                </div>
+                <p className="text-2xl font-bold text-text">{stats.publishedCourses}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">Last updated: Just now</p>
+                <Link
+                  to="/admin/analytics"
+                  className="text-primary hover:underline text-sm font-medium"
+                >
+                  View full analytics →
+                </Link>
               </div>
             </div>
           </div>

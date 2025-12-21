@@ -229,90 +229,9 @@ const getMentorProgress = async (req, res) => {
   }
 };
 
-// Mark a chapter as completed for a student by mentor
-const markChapterCompletedForStudent = async (req, res) => {
-  try {
-    const { studentId, chapterId } = req.body;
-    const mentorId = req.user.userId;
-
-    if (!studentId || !chapterId) {
-      return res.status(400).json({ message: "studentId and chapterId are required" });
-    }
-
-    // Find the chapter and its course
-    const chapter = await Chapter.findById(chapterId);
-    if (!chapter) {
-      return res.status(404).json({ message: "Chapter not found" });
-    }
-
-    const courseId = chapter.courseId;
-
-    // Check if mentor is assigned to the course
-    const course = await Course.findById(courseId);
-    if (!course || course.mentorId.toString() !== mentorId.toString()) {
-      return res.status(403).json({ message: "Access denied: Not the mentor for this course" });
-    }
-
-    // Check if student is assigned to the course
-    const student = await User.findById(studentId);
-    if (!student || !student.assignedCourses.some(c => c.toString() === courseId)) {
-      return res.status(403).json({ message: "Student not assigned to this course" });
-    }
-
-    // Get all chapters in the course sorted by order
-    const allChapters = await Chapter.find({ courseId }).sort({ order: 1 });
-
-    // Find the index of the chapter to complete
-    const chapterIndex = allChapters.findIndex(c => c._id.toString() === chapterId);
-    if (chapterIndex === -1) {
-      return res.status(404).json({ message: "Chapter not found in course" });
-    }
-
-    // Check sequential completion: all previous chapters must be completed
-    for (let i = 0; i < chapterIndex; i++) {
-      const prevChapter = allChapters[i];
-      const prevProgress = await Progress.findOne({ studentId, chapterId: prevChapter._id });
-      if (!prevProgress || !prevProgress.completed) {
-        return res.status(400).json({ message: `Cannot complete this chapter. Chapter "${prevChapter.title}" (order ${prevChapter.order}) must be completed first.` });
-      }
-    }
-
-    // Check if already completed
-    let progress = await Progress.findOne({ studentId, chapterId });
-    if (progress && progress.completed) {
-      return res.status(400).json({ message: "Chapter already completed" });
-    }
-
-    // Mark as completed
-    if (!progress) {
-      progress = new Progress({
-        studentId,
-        courseId,
-        chapterId,
-        completed: true,
-        completedAt: new Date()
-      });
-    } else {
-      progress.completed = true;
-      progress.completedAt = new Date();
-    }
-
-    await progress.save();
-    res.json({ message: "Chapter marked as completed for student", progress });
-  } catch (error) {
-    if (error.name === "ValidationError") {
-      return res.status(400).json({ message: error.message });
-    }
-    if (error.code === 11000) { // Duplicate key error
-      return res.status(400).json({ message: "Progress already exists for this student and chapter" });
-    }
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
 
 module.exports = {
   getProgress,
   markChapterCompleted,
-  getMentorProgress,
-  markChapterCompletedForStudent,
+  getMentorProgress
 };

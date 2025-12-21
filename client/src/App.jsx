@@ -1,36 +1,57 @@
- import { Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
+// Public Pages
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
+// Admin Pages
 import AdminDashboard from './pages/admin/Admin-Dashboard';
 import UserList from './pages/admin/UserList';
 import MentorApproval from './pages/admin/MentorApproval';
 import Analytics from './pages/admin/Analytics';
-import MentorDashboard from './pages/mentor/MentorDashboard';
-import StudentDashboard from './pages/student/Student-Dashboard';
-import CourseViewer from './pages/student/CourseViewer';
-import Courses from './pages/student/Courses';
-import Certificates from './pages/student/Certificates';
 
+// Mentor Pages
+import MentorDashboard from './pages/mentor/MentorDashboard';
 import CreateCourse from './pages/mentor/CreateCourse';
 import AddChapter from './pages/mentor/AddChapter';
 import AssignStudent from './pages/mentor/AssignStudents';
 import Progress from './pages/mentor/Progress';
 
+// Student Pages
+import StudentDashboard from './pages/student/Student-Dashboard';
+import CourseViewer from './pages/student/CourseViewer';
+import Courses from './pages/student/Courses';
+import Certificates from './pages/student/Certificates';
 
+// Protected Route
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
-    <Routes>
-        {/* Public Routes */}
+    <>
+      {/* Toast Notification */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+
+      <Routes>
+        {/* ================= PUBLIC ROUTES ================= */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Admin Routes */}
+        {/* ================= ADMIN ROUTES ================= */}
         <Route
           path="/admin/dashboard"
           element={
@@ -39,6 +60,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/admin/users"
           element={
@@ -47,6 +69,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/admin/mentors"
           element={
@@ -55,6 +78,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/admin/analytics"
           element={
@@ -63,8 +87,8 @@ function App() {
             </ProtectedRoute>
           }
         />
-       
-        {/* Mentor Routes */}
+
+        {/* ================= MENTOR ROUTES ================= */}
         <Route
           path="/mentor/dashboard"
           element={
@@ -73,6 +97,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/mentor/create-course"
           element={
@@ -81,6 +106,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/mentor/add-chapter"
           element={
@@ -90,7 +116,6 @@ function App() {
           }
         />
 
-   
         <Route
           path="/mentor/assign-students"
           element={
@@ -99,6 +124,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* mentor can see progress of all students OR course-wise */}
         <Route
           path="/mentor/progress"
           element={
@@ -108,7 +135,7 @@ function App() {
           }
         />
 
-        {/* Student Routes */}
+        {/* ================= STUDENT ROUTES ================= */}
         <Route
           path="/student/dashboard"
           element={
@@ -117,14 +144,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/student/course/:courseId"
-          element={
-            <ProtectedRoute requiredRole="student">
-              <CourseViewer />
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/student/courses"
           element={
@@ -133,6 +153,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/student/course/:courseId"
+          element={
+            <ProtectedRoute requiredRole="student">
+              <CourseViewer />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/student/certificates"
           element={
@@ -141,6 +171,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/student/certificate/:courseId"
           element={
@@ -150,6 +181,7 @@ function App() {
           }
         />
       </Routes>
+    </>
   );
 }
 
