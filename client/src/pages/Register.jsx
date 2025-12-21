@@ -35,7 +35,7 @@ const Register = () => {
 
       toast.success('Registration successful! Redirecting...');
       setTimeout(() => {
-        navigate('/student-dashboard');
+        navigate('/student/dashboard');
       }, 1500);
 
     } catch (err) {
